@@ -22,7 +22,7 @@ public class CommandKitTab implements TabCompleter {
   Configuration config = MainKits.getPlugin().getConfig();
 
   private final List<String> args1 = Arrays.asList("pegar");
-  private final List<String> args1Admin = Arrays.asList("resetar", "dar", "reiniciar");
+  private final List<String> args1Admin = Arrays.asList("resetar", "dar", "recarregar");
 
   private final ArrayList<String> kits = new ArrayList<>();
   private final ArrayList<String> players = new ArrayList<>();

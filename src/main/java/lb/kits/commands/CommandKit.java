@@ -22,32 +22,40 @@ public class CommandKit implements CommandExecutor {
 
   @Override
   public boolean onCommand(CommandSender sender, Command arg1, String arg2, String[] args) {
-    if (args.length == 0) {
-      sender.sendMessage("§cVocê pode usar /comandos para aprender a usar o comando.");
-      return true;
+    switch (args.length) {
+      case 1: {
+        args1(sender, args);
+        return true;
+      }
+      case 2: {
+        args2(sender, args);
+        return true;
+      }
+      case 3: {
+        args3(sender, args);
+        return true;
+      }
+      default: {
+        sender.sendMessage("§cArgumentos inválidos.");
+        return true;
+      }
     }
-    if (args.length == 2) {
-      args2(sender, args);
-      return true;
-    }
-    if (args.length == 3) {
-      args3(sender, args);
-      return true;
-    }
-    sender.sendMessage("§cArgumentos inválidos.");
-    return true;
   }
 
   private void args1(CommandSender sender, String[] args) {
-    if (!sender.hasPermission("kits.admin.reload")) {
-      sender.sendMessage("§cVocê não tem permissão para fazer isto.");
-      return;
-    }
-    try {
-      MainKits.getPlugin().reloadConfig();
-      sender.sendMessage("§aConfigurações reiniciadas com sucesso.");
-    } catch (Exception error) {
-      sender.sendMessage("§cOcorreu um erro ao reiniciar as configurações.");
+    switch (args[0]) {
+      case "recarregar": {
+        if (!sender.hasPermission("kits.admin.reload")) {
+          sender.sendMessage("§cVocê não tem permissão para fazer isto.");
+          return;
+        }
+        try {
+          MainKits.getPlugin().reloadConfig();
+          sender.sendMessage("§aConfigurações reiniciadas com sucesso.");
+        } catch (Exception error) {
+          sender.sendMessage("§cOcorreu um erro ao reiniciar as configurações.");
+        }
+      }
     }
   }
 
@@ -63,10 +71,14 @@ public class CommandKit implements CommandExecutor {
         String kit = args[1];
 
         if (!player.hasPermission("kits." + kit)) {
-          player.sendMessage("§cVoce não tem permissão");
+          player.sendMessage("§cVocê não tem permissão para fazer isto.");
           return;
         }
         functions.pickKit(player, kit, true);
+        break;
+      }
+      default: {
+        sender.sendMessage("§cArgumentos inválidos.");
         break;
       }
     }
@@ -96,6 +108,10 @@ public class CommandKit implements CommandExecutor {
         MainKits.getPlugin().getConfig().set("cooldowns." + kit + "." + target.getUniqueId() + ".millis", null);
         MainKits.getPlugin().saveConfig();
         sender.sendMessage("§aVocê resetou o tempo de recarga do kit " + kit + " de " + target.getName() + ".");
+        break;
+      }
+      default: {
+        sender.sendMessage("§cArgumentos inválidos.");
         break;
       }
     }
