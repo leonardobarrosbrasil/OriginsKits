@@ -4,33 +4,38 @@ import lb.kits.main.MainKits;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class FunctionsManager {
 
-  public FileConfiguration getConfig() {
-    return MainKits.getPlugin().getConfig();
+  private final ConsoleCommandSender console = Bukkit.getConsoleSender();
+
+  public boolean kitExist(String kitName) {
+    return MainKits.getPlugin().getConfig().getConfigurationSection("kits." + kitName) != null;
   }
 
   public void pickKit(Player player, String kit, boolean addCooldown) {
-    if (getConfig().getConfigurationSection("kits." + kit) == null) {
+    if (!kitExist(kit)) {
       player.sendMessage("§cKit não encontrado.");
       return;
     }
     if (addCooldown) {
       if (!hasCooldown(player, kit)) {
-        player.sendMessage(getRemainingTime(getConfig().getLong("cooldowns." + kit + "." + player.getUniqueId() + ".millis")));
+        long cooldown = MainKits.getPlugin().getConfig().getLong("cooldowns." + kit + "." + player.getUniqueId() + ".millis");
+        player.sendMessage(getRemainingTime(cooldown));
         return;
       }
       addCooldown(player, kit);
@@ -39,12 +44,12 @@ public class FunctionsManager {
       addItems(player, kit);
       player.sendMessage("§aVoce recebeu o kit " + kit + ".");
     } catch (Exception exception) {
-      player.sendMessage("§cOcorreu um erro ao enviar o kit " + kit);
+      player.sendMessage("§cOcorreu um erro ao pegar o kit " + kit);
     }
   }
 
   public void giveKit(CommandSender sender, Player target, String kit, boolean addCooldown) {
-    if (getConfig().getConfigurationSection("kits." + kit) == null) {
+    if (!kitExist(kit)) {
       sender.sendMessage("§cKit não encontrado.");
       return;
     }
@@ -60,64 +65,76 @@ public class FunctionsManager {
     }
   }
 
-  private final ConsoleCommandSender console = Bukkit.getConsoleSender();
-
   public void addItems(Player player, String kit) {
-    ConfigurationSection section = getConfig().getConfigurationSection("kits." + kit + ".content");
+    ConfigurationSection section = MainKits.getPlugin().getConfig().getConfigurationSection("kits." + kit + ".content");
 
     if (section != null) {
       for (String items : section.getKeys(false)) {
-        String displayName = getConfig().getString("kits." + kit + ".content." + items + ".items.displayName");
-        ItemStack item = new ItemStack(Material.valueOf(getConfig().getString("kits." + kit + ".content." + items + ".items.material")), getConfig().getInt("kits." + kit + ".content." + items + ".items.amount"));
-        List<String> lore = getConfig().getStringList("kits." + kit + ".content." + items + ".items.lore");
-        Integer model = getConfig().getInt("kits." + kit + ".content." + items + ".items.model");
+        String itemPath = "kits." + kit + ".content." + items + ".items.";
+
+        String displayName = MainKits.getPlugin().getConfig().getString(itemPath + "displayName");
+        Material material = Material.valueOf(Objects.requireNonNull(MainKits.getPlugin().getConfig().getString(itemPath + "material")));
+        int amount = MainKits.getPlugin().getConfig().getInt(itemPath + "amount");
+
+        Integer model = MainKits.getPlugin().getConfig().getInt(itemPath + "model");
+
+        ItemStack item = new ItemStack(material, amount);
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
           meta.setDisplayName(hex(displayName));
-          lore.replaceAll(s -> hex(s));
-          meta.setLore(lore);
+
+          List<String> lore = MainKits.getPlugin().getConfig().getStringList(itemPath + "lore");
+
+          if (!lore.isEmpty()) {
+            lore.replaceAll(this::hex);
+            meta.setLore(lore);
+          }
+
           meta.setCustomModelData(model);
 
-          console.sendMessage("passou");
-          if (getConfig().getStringList("kits." + kit + ".content." + items + ".items.enchantments").size() > 0) {
-            for (String enchant : getConfig().getStringList("kits." + kit + ".content." + items + ".items.enchantments")) {
-              if (enchant != null) {
-                String enchantName = enchant.split(":")[0];
-                int enchantLevel = Integer.parseInt(enchant.split(":")[1]);
-                Enchantment enchantment = Enchantment.getByName(enchantName);
+          List<String> enchantments = MainKits.getPlugin().getConfig().getStringList(itemPath + "enchantments");
 
-                if (enchantment != null) {
-                  meta.addEnchant(enchantment, enchantLevel, true);
-                }
+          if (!enchantments.isEmpty()) {
+            for (String enchant : enchantments) {
+              String[] enchantData = enchant.split(" ");
+
+              String enchantName = enchantData[0];
+              int enchantLevel = enchantData.length == 2 ? Integer.parseInt(enchantData[1]) : 1;
+              Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(enchantName.toLowerCase()));
+
+              console.sendMessage("6" + enchantLevel);
+              if (enchantment != null) {
+                meta.addEnchant(enchantment, enchantLevel, true);
+                console.sendMessage("teste");
               }
             }
           }
-          item.setItemMeta(meta);
-          addItem(player, item);
         }
+        item.setItemMeta(meta);
+        addItem(player, item);
       }
     }
   }
 
   public void addCooldown(Player player, String name) {
-    long cooldown = getConfig().getLong("kits." + name + ".cooldown");
+    long cooldown = MainKits.getPlugin().getConfig().getLong("kits." + name + ".cooldown");
 
     if (cooldown <= 0) {
       System.out.print("Kit cooldown " + name + " does not exist or is less than or equal to zero.");
       return;
     }
     try {
-      getConfig().set("cooldowns." + name + "." + player.getUniqueId() + ".millis", System.currentTimeMillis() + cooldown);
+      MainKits.getPlugin().getConfig().set("cooldowns." + name + "." + player.getUniqueId() + ".millis", System.currentTimeMillis() + cooldown);
       MainKits.getPlugin().saveConfig();
     } catch (Exception exception) {
       exception.printStackTrace();
     }
   }
 
-  public boolean hasCooldown(Player player, String name) {
+  public boolean hasCooldown(Player player, String kit) {
     long current = System.currentTimeMillis();
-    long millis = getConfig().getLong("cooldowns." + name + "." + player.getUniqueId() + ".millis");
+    long millis = MainKits.getPlugin().getConfig().getLong("cooldowns." + kit + "." + player.getUniqueId() + ".millis");
     return current >= millis;
   }
 
@@ -125,57 +142,36 @@ public class FunctionsManager {
     long current = System.currentTimeMillis();
     long millis = value - current;
 
-    long minutes = 0;
-    long hours = 0;
-    long days = 0;
-    long weeks = 0;
-
     if (millis <= 0) {
-      return "§aAguardando atualização";
-    }
-    if (millis < 60000) {
-      long seconds = 0;
-      while (millis > 1000) {
-        millis -= 1000;
-        seconds++;
-      }
-      return "§cVocê precisa esperar " + seconds + " §c" + ((seconds == 1) ? "segundo " : "segundos " + "para pegar o kit.");
-    }
-    while (millis > 1000) {
-      millis -= 1000 * 60;
-      minutes++;
-    }
-    while (minutes > 60) {
-      minutes -= 60;
-      hours++;
-    }
-    while (hours > 24) {
-      hours -= 24;
-      days++;
-    }
-    while (days > 7) {
-      days -= 7;
-      weeks++;
-    }
-    String weeklist = "";
-    if (weeks >= 1) {
-      weeklist = "§c" + weeks + " §c" + ((weeks == 1) ? "§csemana e " : "§csemanas e ");
+      return "§aVocê já pode pegar o kit.";
     }
 
-    String daylist = "";
-    if (days >= 1) {
-      daylist = "§c" + days + " §c" + ((days == 1) ? "§dia e " : "§cdias e ");
+    long weeks = TimeUnit.MILLISECONDS.toDays(millis) / 7;
+    long days = TimeUnit.MILLISECONDS.toDays(millis) % 7;
+    long hours = TimeUnit.MILLISECONDS.toHours(millis) % 24;
+    long minutes = TimeUnit.MILLISECONDS.toMinutes(millis) % 60;
+
+    StringBuilder remainingTime = new StringBuilder("§cVocê precisa esperar ");
+
+    if (weeks > 0) {
+      remainingTime.append("§c").append(weeks).append(" §c").append(weeks == 1 ? "semana" : "semanas").append(" e ");
     }
 
-    String hourlist = "";
-    if (hours >= 1) {
-      hourlist = "§c" + hours + " §c" + ((hours == 1) ? "§chora e " : "§choras e ");
+    if (days > 0) {
+      remainingTime.append("§c").append(days).append(" §c").append(days == 1 ? "dia" : "dias").append(" e ");
     }
-    String minutelist = "";
-    if (minutes >= 1) {
-      minutelist = "§c" + minutes + " §c" + ((minutes == 1) ? "§cminuto " : "§cminutos");
+
+    if (hours > 0) {
+      remainingTime.append("§c").append(hours).append(" §c").append(hours == 1 ? "hora" : "horas").append(" e ");
     }
-    return "§cVocê precisa esperar " + weeklist + daylist + hourlist + minutelist + " para pegar o kit.";
+
+    if (minutes > 0) {
+      remainingTime.append("§c").append(minutes).append(" §c").append(minutes == 1 ? "minuto" : "minutos");
+    }
+
+    remainingTime.append(" para pegar o kit.");
+
+    return remainingTime.toString();
   }
 
   public void addItem(Player player, ItemStack item) {

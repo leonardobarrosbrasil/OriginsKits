@@ -19,7 +19,7 @@ public final class MainKits extends JavaPlugin {
     }
 
     public void registerCommands() {
-        CommandKit kit = new CommandKit(this, "kit");
+        new CommandKit(this, "conjunto");
         console.sendMessage("§a" + getPlugin().getName() + ": Comandos carregados com sucesso.");
     }
 

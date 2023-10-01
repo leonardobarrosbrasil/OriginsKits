@@ -27,6 +27,8 @@ public class CommandKitTab implements TabCompleter {
   private final ArrayList<String> kits = new ArrayList<>();
   private final ArrayList<String> players = new ArrayList<>();
 
+  private final List<String> args2Admin = Arrays.asList("verdadeiro", "falso");
+
   @Override
   public List<String> onTabComplete(CommandSender sender, Command arg1, String arg2, String[] args) {
     final List<String> completions = new ArrayList<>();
@@ -34,38 +36,43 @@ public class CommandKitTab implements TabCompleter {
       return completions;
     }
     switch (args.length) {
-      case 1: {
+      case 1 -> {
         if (sender.hasPermission("lb.admin.kits")) {
           StringUtil.copyPartialMatches(args[0], args1Admin, completions);
         }
         StringUtil.copyPartialMatches(args[0], args1, completions);
-        break;
       }
-      case 2: {
-        ConfigurationSection section = MainKits.getPlugin().getConfig().getConfigurationSection("kits");
-        kits.clear();
+      case 2 -> {
+        switch (args[0]) {
+          case "dar", "resetar", "pegar" -> {
+            ConfigurationSection section = MainKits.getPlugin().getConfig().getConfigurationSection("kits");
+            kits.clear();
 
-        if (section != null) {
-          for (String kit : section.getKeys(false)) {
-            if (sender.hasPermission("kits." + kit)) {
-              kits.add(kit);
+            if (section != null) {
+              for (String kit : section.getKeys(false)) {
+                if (sender.hasPermission("kits." + kit)) {
+                  kits.add(kit);
+                }
+              }
             }
+            StringUtil.copyPartialMatches(args[1], kits, completions);
           }
         }
-        StringUtil.copyPartialMatches(args[1], kits, completions);
-        break;
       }
-      case 3: {
+      case 3 -> {
         switch (args[0]) {
-          case "dar":
-          case "resetar": {
+          case "dar", "resetar" -> {
             players.clear();
             Bukkit.getOnlinePlayers().forEach(p -> {
               players.add(p.getName());
             });
             StringUtil.copyPartialMatches(args[2], players, completions);
-            break;
           }
+        }
+      }
+      case 4 -> {
+        if (args[0].equalsIgnoreCase("dar")) {
+          StringUtil.copyPartialMatches(args[3], args2Admin, completions);
         }
       }
     }

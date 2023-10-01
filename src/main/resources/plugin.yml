@@ -1,10 +1,8 @@
-name: ZeroKits
+name: OriginsKits
 version: '${project.version}'
 main: lb.kits.main.MainKits
-api-version: 1.16
+api-version: 1.19
 authors: [ Dimensions ]
 commands:
-  kit:
-    description: Sistema de kits
-  kitsreload:
+  conjunto:
     description: Sistema de kits
