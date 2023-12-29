@@ -3,6 +3,9 @@ version: '${project.version}'
 main: lb.kits.main.MainKits
 api-version: 1.19
 authors: [ Dimensions ]
+depend:
+  - ItemsAdder
 commands:
-  conjunto:
+  kit:
     description: Sistema de kits
+    

@@ -19,15 +19,15 @@ public final class MainKits extends JavaPlugin {
     }
 
     public void registerCommands() {
-        new CommandKit(this, "conjunto");
+        new CommandKit(this, "kit");
         console.sendMessage("§a" + getPlugin().getName() + ": Comandos carregados com sucesso.");
     }
 
     @Override
     public void onEnable() {
         instance = this;
-        this.saveDefaultConfig();
         functions = new FunctionsManager();
+        this.saveDefaultConfig();
         registerCommands();
         console.sendMessage("§a" + getPlugin().getName() + ": Plugin habilitado com sucesso.");
     }

@@ -1,5 +1,6 @@
 package lb.kits.utils;
 
+import dev.lone.itemsadder.api.CustomStack;
 import lb.kits.main.MainKits;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
@@ -10,6 +11,7 @@ import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -44,7 +46,7 @@ public class FunctionsManager {
       addItems(player, kit);
       player.sendMessage("§aVoce recebeu o kit " + kit + ".");
     } catch (Exception exception) {
-      player.sendMessage("§cOcorreu um erro ao pegar o kit " + kit);
+      player.sendMessage("§cOcorreu um erro ao pegar o kit " + kit + ".");
     }
   }
 
@@ -65,6 +67,30 @@ public class FunctionsManager {
     }
   }
 
+  public void giveKit(Player target, String kit, boolean addCooldown) {
+    if (!kitExist(kit)) {
+      return;
+    }
+    if (addCooldown) {
+      addCooldown(target, kit);
+    }
+    try {
+      addItems(target, kit);
+    } catch (Exception exception) {
+      Bukkit.getConsoleSender().sendMessage("§cOcorreu um erro ao dar o kit " + kit + " para " + target.getName() + ".");
+    }
+  }
+
+  public ItemStack getItemsAdder(String namespace, int amount) {
+    CustomStack stack = CustomStack.getInstance(namespace);
+    if (stack != null) {
+      ItemStack item = stack.getItemStack();
+      item.setAmount(amount);
+      return item;
+    }
+    return null;
+  }
+
   public void addItems(Player player, String kit) {
     ConfigurationSection section = MainKits.getPlugin().getConfig().getConfigurationSection("kits." + kit + ".content");
 
@@ -72,28 +98,40 @@ public class FunctionsManager {
       for (String items : section.getKeys(false)) {
         String itemPath = "kits." + kit + ".content." + items + ".items.";
 
-        String displayName = MainKits.getPlugin().getConfig().getString(itemPath + "displayName");
-        Material material = Material.valueOf(Objects.requireNonNull(MainKits.getPlugin().getConfig().getString(itemPath + "material")));
+        String namespace = MainKits.getPlugin().getConfig().getString(itemPath + "itemsadder");
         int amount = MainKits.getPlugin().getConfig().getInt(itemPath + "amount");
 
+        if (namespace != null) {
+          ItemStack item = getItemsAdder(namespace, amount);
+
+          if (item != null) {
+            addItem(player, item);
+            continue;
+          }
+        }
+
+        String displayName = MainKits.getPlugin().getConfig().getString(itemPath + "displayName");
+        List<String> lore = MainKits.getPlugin().getConfig().getStringList(itemPath + "lore");
+        Material material = Material.valueOf(Objects.requireNonNull(MainKits.getPlugin().getConfig().getString(itemPath + "material")));
+        List<String> enchantments = MainKits.getPlugin().getConfig().getStringList(itemPath + "enchantments");
         Integer model = MainKits.getPlugin().getConfig().getInt(itemPath + "model");
 
         ItemStack item = new ItemStack(material, amount);
         ItemMeta meta = item.getItemMeta();
 
         if (meta != null) {
-          meta.setDisplayName(hex(displayName));
-
-          List<String> lore = MainKits.getPlugin().getConfig().getStringList(itemPath + "lore");
-
+          if (displayName != null) {
+            meta.setDisplayName(hex(displayName));
+          }
           if (!lore.isEmpty()) {
             lore.replaceAll(this::hex);
             meta.setLore(lore);
           }
 
+          meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+          meta.addItemFlags(ItemFlag.HIDE_ARMOR_TRIM);
+          meta.addItemFlags(ItemFlag.HIDE_POTION_EFFECTS);
           meta.setCustomModelData(model);
-
-          List<String> enchantments = MainKits.getPlugin().getConfig().getStringList(itemPath + "enchantments");
 
           if (!enchantments.isEmpty()) {
             for (String enchant : enchantments) {
@@ -103,10 +141,8 @@ public class FunctionsManager {
               int enchantLevel = enchantData.length == 2 ? Integer.parseInt(enchantData[1]) : 1;
               Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(enchantName.toLowerCase()));
 
-              console.sendMessage("6" + enchantLevel);
               if (enchantment != null) {
                 meta.addEnchant(enchantment, enchantLevel, true);
-                console.sendMessage("teste");
               }
             }
           }
@@ -128,7 +164,7 @@ public class FunctionsManager {
       MainKits.getPlugin().getConfig().set("cooldowns." + name + "." + player.getUniqueId() + ".millis", System.currentTimeMillis() + cooldown);
       MainKits.getPlugin().saveConfig();
     } catch (Exception exception) {
-      exception.printStackTrace();
+      Bukkit.getConsoleSender().sendMessage(exception.toString());
     }
   }
 
@@ -185,18 +221,17 @@ public class FunctionsManager {
   public String hex(String message) {
     Pattern pattern = Pattern.compile("#[a-fA-F0-9]{6}");
     Matcher matcher = pattern.matcher(message);
-    while (matcher.find()) {
-      String hexCode = message.substring(matcher.start(), matcher.end());
-      String replaceSharp = hexCode.replace('#', 'x');
+    StringBuilder buffer = new StringBuilder();
 
-      char[] ch = replaceSharp.toCharArray();
-      StringBuilder builder = new StringBuilder();
-      for (char c : ch) {
-        builder.append("&").append(c);
+    while (matcher.find()) {
+      StringBuilder replacement = new StringBuilder("&x");
+      for (char c : matcher.group().substring(1).toCharArray()) {
+        replacement.append("&").append(c);
       }
-      message = message.replace(hexCode, builder.toString());
-      matcher = pattern.matcher(message);
+      matcher.appendReplacement(buffer, replacement.toString());
     }
-    return ChatColor.translateAlternateColorCodes('&', message);
+    matcher.appendTail(buffer);
+
+    return ChatColor.translateAlternateColorCodes('&', buffer.toString());
   }
 }
