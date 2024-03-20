@@ -4,6 +4,7 @@ import dev.lone.itemsadder.api.CustomStack;
 import lb.kits.main.MainKits;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
