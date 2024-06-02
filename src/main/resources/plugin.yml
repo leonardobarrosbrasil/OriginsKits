@@ -8,4 +8,6 @@ depend:
 commands:
   kit:
     description: Sistema de kits
+    aliases:
+      - kits
     
